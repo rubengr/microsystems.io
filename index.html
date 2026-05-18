@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Desenvolvimento Eletrónico — PCB, Firmware & Microcontroladores</title>
+  <title id="page-title">Desenvolvimento Eletrónico — PCB, Firmware & Microcontroladores</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
@@ -1308,6 +1308,9 @@
     btn.classList.add('active');
     updateSelectOptions(lang);
     localStorage.setItem('lang', lang);
+    // Update browser title
+    const titles = { pt: 'Desenvolvimento Eletrónico — PCB, Firmware & Microcontroladores', en: 'Electronic Development — PCB, Firmware & Microcontrollers' };
+    document.getElementById('page-title').textContent = titles[lang] || titles.pt;
   }
 
   function updateSelectOptions(lang) {
@@ -1369,6 +1372,10 @@
     btns.forEach(b => b.classList.remove('active'));
     const target = saved === 'en' ? btns[1] : btns[0];
     if (target) target.classList.add('active');
+    // Set title on init
+    const initTitles = { pt: 'Desenvolvimento Eletrónico — PCB, Firmware & Microcontroladores', en: 'Electronic Development — PCB, Firmware & Microcontrollers' };
+    const titleEl = document.getElementById('page-title');
+    if (titleEl) titleEl.textContent = initTitles[saved] || initTitles.pt;
     updateSelectOptions(saved);
   })();
 
