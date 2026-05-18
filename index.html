@@ -1302,7 +1302,7 @@
 </footer>
 
 <script>
-function setLang(lang, btn) {
+  function setLang(lang, btn) {
     document.body.className = 'lang-' + lang;
     document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -1312,35 +1312,71 @@ function setLang(lang, btn) {
 
   function updateSelectOptions(lang) {
     document.querySelectorAll('.form-select').forEach(sel => {
-      const opts = sel.querySelectorAll('option[data-lang]');
-      opts.forEach(o => { o.hidden = o.getAttribute('data-lang') !== lang; });
+      sel.querySelectorAll('option[data-lang]').forEach(o => {
+        o.hidden = o.getAttribute('data-lang') !== lang;
+      });
+    });
+  }
+
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), 80 * (Array.from(reveals).indexOf(entry.target) % 4));
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(el => observer.observe(el));
+
+  // Form submit
+  function handleSubmit(e) {
+    e.preventDefault();
+    const btn = e.target;
+    const isEn = document.body.classList.contains('lang-en');
+    btn.innerHTML = isEn ? 'Message Sent ✓' : 'Mensagem Enviada ✓';
+    btn.style.background = '#39ff14';
+    setTimeout(() => {
+      btn.innerHTML = isEn
+        ? '<span data-lang="en">Send Message →</span>'
+        : '<span data-lang="pt">Enviar Mensagem →</span>';
+      btn.style.background = '';
+      // re-show correct lang span after reset
+      document.querySelectorAll('.form-submit [data-lang]').forEach(el => {
+        el.style.display = el.getAttribute('data-lang') === (isEn ? 'en' : 'pt') ? 'inline' : 'none';
+      });
+    }, 3000);
+  }
+
+  // Cursor trail on hero
+  const hero = document.getElementById('hero');
+  if (hero) {
+    hero.addEventListener('mousemove', (e) => {
+      const dot = document.createElement('div');
+      dot.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;width:3px;height:3px;background:rgba(26,168,196,0.4);border-radius:50%;pointer-events:none;z-index:9999;transition:opacity 0.6s,transform 0.6s;`;
+      document.body.appendChild(dot);
+      requestAnimationFrame(() => { dot.style.opacity = '0'; dot.style.transform = 'scale(3)'; });
+      setTimeout(() => dot.remove(), 600);
     });
   }
 
   // Init — restore saved language
   (function() {
     const saved = localStorage.getItem('lang') || 'pt';
-    const btn = document.querySelector('.lang-btn[onclick*="\'" + saved + "\'"]') ||
-                document.querySelectorAll('.lang-btn')[saved === 'en' ? 1 : 0];
     document.body.className = 'lang-' + saved;
-    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    const btns = document.querySelectorAll('.lang-btn');
+    btns.forEach(b => b.classList.remove('active'));
+    const target = saved === 'en' ? btns[1] : btns[0];
+    if (target) target.classList.add('active');
     updateSelectOptions(saved);
   })();
 
   // Auto year
-  const yr = new Date().getFullYear();
-  const y1 = document.getElementById('year');
-  const y2 = document.getElementById('year2');
-  if (y1) y1.textContent = yr;
-  if (y2) y2.textContent = yr;
-
-  // Auto year
-  const yr = new Date().getFullYear();
-  const y1 = document.getElementById('year');
-  const y2 = document.getElementById('year2');
-  if(y1) y1.textContent = yr;
-  if(y2) y2.textContent = yr;
+  ['year', 'year2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = new Date().getFullYear();
+  });
 </script>
 </body>
 </html>
