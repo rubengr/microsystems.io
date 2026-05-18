@@ -329,11 +329,23 @@
 </footer>
 
 <script>
-  function setLang(lang,btn){
-    document.body.className='lang-'+lang;
-    document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active'));
+function setLang(lang, btn) {
+    document.body.className = 'lang-' + lang;
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    localStorage.setItem('lang', lang);
   }
+
+  // Init — restore saved language
+  (function() {
+    const saved = localStorage.getItem('lang') || 'pt';
+    document.body.className = 'lang-' + saved;
+    const btns = document.querySelectorAll('.lang-btn');
+    btns.forEach(b => b.classList.remove('active'));
+    const target = saved === 'en' ? btns[1] : btns[0];
+    if (target) target.classList.add('active');
+  })();
+
   document.getElementById('year').textContent = new Date().getFullYear();
 </script>
 </body>
