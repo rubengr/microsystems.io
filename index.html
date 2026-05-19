@@ -1208,11 +1208,11 @@
     </div>
 
     <div class="reveal">
-      <div class="contact-form">
+      <form class="contact-form" action="https://formspree.io/f/XXXXXXXX" method="POST" id="contact-form">
         <div class="form-row">
           <div class="form-group">
             <label class="form-label"><span data-lang="pt">Nome</span><span data-lang="en">Name</span></label>
-            <input type="text" class="form-input" placeholder="..." />
+            <input type="text" class="form-input" name="nome" placeholder="..." required />
           </div>
           <div class="form-group">
             <label class="form-label"><span data-lang="pt">Empresa</span><span data-lang="en">Company</span></label>
@@ -1221,11 +1221,11 @@
         </div>
         <div class="form-group">
           <label class="form-label">Email</label>
-          <input type="email" class="form-input" placeholder="email@exemplo.com" />
+          <input type="email" class="form-input" name="email" placeholder="email@exemplo.com" required />
         </div>
         <div class="form-group">
           <label class="form-label"><span data-lang="pt">Tipo de Serviço</span><span data-lang="en">Service Type</span></label>
-          <select class="form-select form-input">
+          <select class="form-select form-input" name="servico">
             <option value="">
             </option>
             <option data-lang="pt">Esquemático &amp; Layout PCB</option>
@@ -1244,13 +1244,29 @@
         </div>
         <div class="form-group">
           <label class="form-label"><span data-lang="pt">Descrição do Projeto</span><span data-lang="en">Project Description</span></label>
-          <textarea class="form-textarea" placeholder="..."></textarea>
+          <textarea class="form-textarea" name="mensagem" placeholder="..." required></textarea>
         </div>
-        <button class="form-submit" onclick="handleSubmit(event)">
+        <!-- Hidden field to send language context -->
+        <input type="hidden" name="_subject" id="form-subject" value="Novo contacto — MicroSystems" />
+        <input type="hidden" name="_language" value="pt" id="form-lang-field" />
+        <!-- Honeypot anti-spam -->
+        <input type="text" name="_gotcha" style="display:none" />
+
+        <button type="submit" class="form-submit" id="form-submit-btn">
           <span data-lang="pt">Enviar Mensagem →</span>
           <span data-lang="en">Send Message →</span>
         </button>
-      </div>
+
+        <!-- Success / error messages -->
+        <div id="form-success" style="display:none; font-family:var(--mono); font-size:0.75rem; color:#39ff14; letter-spacing:1px; margin-top:8px;">
+          <span data-lang="pt">✓ Mensagem enviada! Respondemos em breve.</span>
+          <span data-lang="en">✓ Message sent! We'll get back to you shortly.</span>
+        </div>
+        <div id="form-error" style="display:none; font-family:var(--mono); font-size:0.75rem; color:#ff4444; letter-spacing:1px; margin-top:8px;">
+          <span data-lang="pt">✗ Erro ao enviar. Tente novamente ou contacte diretamente por email.</span>
+          <span data-lang="en">✗ Error sending. Please try again or contact us directly by email.</span>
+        </div>
+      </form>
     </div>
   </div>
 </section>
@@ -1333,23 +1349,52 @@
   }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
   reveals.forEach(el => observer.observe(el));
 
-  // Form submit
-  function handleSubmit(e) {
-    e.preventDefault();
-    const btn = e.target;
-    const isEn = document.body.classList.contains('lang-en');
-    btn.innerHTML = isEn ? 'Message Sent ✓' : 'Mensagem Enviada ✓';
-    btn.style.background = '#39ff14';
-    setTimeout(() => {
-      btn.innerHTML = isEn
-        ? '<span data-lang="en">Send Message →</span>'
-        : '<span data-lang="pt">Enviar Mensagem →</span>';
-      btn.style.background = '';
-      // re-show correct lang span after reset
-      document.querySelectorAll('.form-submit [data-lang]').forEach(el => {
-        el.style.display = el.getAttribute('data-lang') === (isEn ? 'en' : 'pt') ? 'inline' : 'none';
-      });
-    }, 3000);
+  // Form submit via Formspree
+  const contactForm = document.getElementById('contact-form');
+  if (contactForm) {
+    contactForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('form-submit-btn');
+      const successEl = document.getElementById('form-success');
+      const errorEl = document.getElementById('form-error');
+      const isEn = document.body.classList.contains('lang-en');
+
+      // Update subject line with language
+      document.getElementById('form-subject').value = isEn
+        ? 'New contact — MicroSystems'
+        : 'Novo contacto — MicroSystems';
+
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+
+      try {
+        const res = await fetch(contactForm.action, {
+          method: 'POST',
+          body: new FormData(contactForm),
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (res.ok) {
+          successEl.style.display = 'block';
+          errorEl.style.display = 'none';
+          contactForm.reset();
+          btn.style.background = '#39ff14';
+          setTimeout(() => {
+            btn.style.background = '';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            successEl.style.display = 'none';
+          }, 5000);
+        } else {
+          throw new Error('Server error');
+        }
+      } catch(err) {
+        errorEl.style.display = 'block';
+        successEl.style.display = 'none';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    });
   }
 
   // Cursor trail on hero
