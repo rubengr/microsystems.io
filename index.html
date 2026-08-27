@@ -2086,12 +2086,12 @@
     }
 
     async function submitOrderEmail() {
-      const name  = document.getElementById('om-fname').value.trim();
-      const email = document.getElementById('om-femail').value.trim();
-      const phone = document.getElementById('om-fphone').value.trim();
+      const name    = document.getElementById('om-fname').value.trim();
+      const email   = document.getElementById('om-femail').value.trim();
+      const phone   = document.getElementById('om-fphone').value.trim();
       const country = document.getElementById('om-fcountry').value.trim();
-      const notes = document.getElementById('om-fnotes').value.trim();
-      const isEn  = document.body.classList.contains('lang-en');
+      const notes   = document.getElementById('om-fnotes').value.trim();
+      const isEn    = document.body.classList.contains('lang-en');
 
       if (!name || !email) {
         alert(isEn ? 'Please fill in your name and email.' : 'Por favor preencha o nome e email.');
@@ -2104,35 +2104,68 @@
       const btn = document.getElementById('om-submit-btn');
       btn.disabled = true; btn.style.opacity = '0.6';
 
-      const fd = new FormData();
-      fd.append('_subject', `Encomenda ${_omProduct.ref} — ${name}`);
-      fd.append('produto',    _omProduct.ref);
-      fd.append('produto_nome', isEn ? _omProduct.name_en : _omProduct.name_pt);
-      fd.append('quantidade', qty);
-      fd.append('total_estimado', total + ' €');
-      fd.append('nome',   name);
-      fd.append('email',  email);
-      fd.append('telemovel', phone);
-      fd.append('pais',   country);
-      fd.append('notas',  notes || '—');
+      // Build mailto as reliable fallback
+      const subject = encodeURIComponent(`Encomenda ${_omProduct.ref} — ${name}`);
+      const body = encodeURIComponent(
+        `Produto: ${_omProduct.ref} — ${isEn ? _omProduct.name_en : _omProduct.name_pt}\n` +
+        `Quantidade: ${qty}\n` +
+        `Total estimado: ${total} €\n\n` +
+        `Nome: ${name}\n` +
+        `Email: ${email}\n` +
+        `Telemóvel: ${phone || '—'}\n` +
+        `País: ${country || '—'}\n` +
+        `Notas: ${notes || '—'}`
+      );
+      const mailtoLink = `mailto:ruben_gr@live.com.pt?subject=${subject}&body=${body}`;
 
-      try {
-        const res = await fetch('https://formspree.io/f/XXXXXXXX', {
-          method: 'POST', body: fd,
-          headers: { 'Accept': 'application/json' }
-        });
-        if (res.ok) {
-          document.getElementById('om-success').style.display = 'block';
-          document.getElementById('om-error').style.display   = 'none';
-          ['om-fname','om-femail','om-fphone','om-fcountry','om-fnotes']
-            .forEach(id => { document.getElementById(id).value = ''; });
-          setTimeout(() => closeOrderBtn(), 6000);
-        } else { throw new Error(); }
-      } catch(e) {
-        document.getElementById('om-error').style.display   = 'block';
-        document.getElementById('om-success').style.display = 'none';
+      // Try Formspree first; if not configured, fallback to mailto
+      const FORMSPREE = 'https://formspree.io/f/meedezek';
+      const hasFormspree = !FORMSPREE.includes('XXXX');
+
+      if (hasFormspree) {
+        try {
+          const fd = new FormData();
+          fd.append('_subject',      `Encomenda ${_omProduct.ref} — ${name}`);
+          fd.append('produto',       _omProduct.ref);
+          fd.append('produto_nome',  isEn ? _omProduct.name_en : _omProduct.name_pt);
+          fd.append('quantidade',    qty);
+          fd.append('total_estimado', total + ' €');
+          fd.append('nome',          name);
+          fd.append('email',         email);
+          fd.append('telemovel',     phone || '—');
+          fd.append('pais',          country || '—');
+          fd.append('notas',         notes || '—');
+
+          const res = await fetch(FORMSPREE, {
+            method: 'POST', body: fd,
+            headers: { 'Accept': 'application/json' }
+          });
+
+          if (res.ok) {
+            document.getElementById('om-success').style.display = 'block';
+            document.getElementById('om-error').style.display   = 'none';
+            ['om-fname','om-femail','om-fphone','om-fcountry','om-fnotes']
+              .forEach(id => { document.getElementById(id).value = ''; });
+            setTimeout(() => closeOrderBtn(), 6000);
+            btn.disabled = false; btn.style.opacity = '1';
+            return;
+          }
+        } catch(e) { /* fall through to mailto */ }
       }
 
+      // Fallback: open mailto link (always works, no server needed)
+      window.location.href = mailtoLink;
+      document.getElementById('om-success').style.display = 'block';
+      document.getElementById('om-error').style.display   = 'none';
+      // Update success message to reflect mailto behaviour
+      document.getElementById('om-success').innerHTML =
+        isEn
+          ? '<span>✓ Your email client will open with the order details pre-filled. Send it to complete your request.</span>'
+          : '<span>✓ O seu cliente de email abrirá com os detalhes preenchidos. Envie-o para completar o pedido.</span>';
+
+      ['om-fname','om-femail','om-fphone','om-fcountry','om-fnotes']
+        .forEach(id => { document.getElementById(id).value = ''; });
+      setTimeout(() => closeOrderBtn(), 8000);
       btn.disabled = false; btn.style.opacity = '1';
     }
   </script>
@@ -2186,7 +2219,7 @@
     </div>
 
     <div class="reveal">
-      <form class="contact-form" action="https://formspree.io/f/XXXXXXXX" method="POST" id="contact-form">
+      <form class="contact-form" action="https://formspree.io/f/meedezek" method="POST" id="contact-form">
         <div class="form-row">
           <div class="form-group">
             <label class="form-label"><span data-lang="pt">Nome</span><span data-lang="en">Name</span></label>
@@ -2327,17 +2360,16 @@
   }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
   reveals.forEach(el => observer.observe(el));
 
-  // Form submit via Formspree
+  // Form submit — Formspree with mailto fallback
   const contactForm = document.getElementById('contact-form');
   if (contactForm) {
     contactForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       const btn = document.getElementById('form-submit-btn');
       const successEl = document.getElementById('form-success');
-      const errorEl = document.getElementById('form-error');
+      const errorEl   = document.getElementById('form-error');
       const isEn = document.body.classList.contains('lang-en');
 
-      // Update subject line with language
       document.getElementById('form-subject').value = isEn
         ? 'New contact — MicroSystems'
         : 'Novo contacto — MicroSystems';
@@ -2345,33 +2377,52 @@
       btn.disabled = true;
       btn.style.opacity = '0.6';
 
-      try {
-        const res = await fetch(contactForm.action, {
-          method: 'POST',
-          body: new FormData(contactForm),
-          headers: { 'Accept': 'application/json' }
-        });
+      const FORMSPREE_URL = contactForm.action;
+      const hasFormspree  = !FORMSPREE_URL.includes('XXXX');
 
-        if (res.ok) {
-          successEl.style.display = 'block';
-          errorEl.style.display = 'none';
-          contactForm.reset();
-          btn.style.background = '#39ff14';
-          setTimeout(() => {
-            btn.style.background = '';
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            successEl.style.display = 'none';
-          }, 5000);
-        } else {
-          throw new Error('Server error');
-        }
-      } catch(err) {
-        errorEl.style.display = 'block';
-        successEl.style.display = 'none';
-        btn.disabled = false;
-        btn.style.opacity = '1';
+      if (hasFormspree) {
+        try {
+          const res = await fetch(FORMSPREE_URL, {
+            method: 'POST',
+            body: new FormData(contactForm),
+            headers: { 'Accept': 'application/json' }
+          });
+          if (res.ok) {
+            successEl.style.display = 'block';
+            errorEl.style.display   = 'none';
+            contactForm.reset();
+            btn.style.background = '#39ff14';
+            setTimeout(() => {
+              btn.style.background = '';
+              btn.disabled = false;
+              btn.style.opacity = '1';
+              successEl.style.display = 'none';
+            }, 5000);
+            return;
+          } else { throw new Error(); }
+        } catch(err) { /* fall through to mailto */ }
       }
+
+      // Mailto fallback — always works
+      const fd   = new FormData(contactForm);
+      const nome = fd.get('nome') || '';
+      const em   = fd.get('email') || '';
+      const svc  = fd.get('servico') || '';
+      const msg  = fd.get('mensagem') || '';
+      const subj = encodeURIComponent(isEn ? 'New contact — MicroSystems' : 'Novo contacto — MicroSystems');
+      const body = encodeURIComponent(
+        `Nome: ${nome}\nEmail: ${em}\nServiço: ${svc}\n\n${msg}`
+      );
+      window.location.href = `mailto:ruben_gr@live.com.pt?subject=${subj}&body=${body}`;
+
+      successEl.style.display = 'block';
+      errorEl.style.display   = 'none';
+      successEl.innerHTML = isEn
+        ? '<span data-lang="en">✓ Your email client will open with the message pre-filled. Send it to complete your enquiry.</span>'
+        : '<span data-lang="pt">✓ O seu cliente de email abrirá com a mensagem preenchida. Envie-o para completar o contacto.</span>';
+      contactForm.reset();
+      btn.disabled = false;
+      btn.style.opacity = '1';
     });
   }
 
